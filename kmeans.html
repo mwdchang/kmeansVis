@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>KMeans Visualization</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.8/d3.js" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.js"></script>
+<style>
+body {
+   margin: 1rem;
+   font-family: Tahoma;
+   font-size: 0.85rem;
+}
+div {
+   margin: 0.5rem;
+}
+</style>
+</head>
+<body>
+   <h3>KMeans - Clustering Visualization</h3>
+   <p>
+      A fairly naive K-Means clustering algorithm implementation.
+   </p>
+   <span>
+      <button onClick="kmeans()">Start</button>
+   </span>
+   <br>
+   <div style="float:left;width:35%"><svg id="canvas"><svg></div>
+   <div style="float:left;width:40%"><svg id="summary"></svg></div>
+</body>
+<script>
+
+var vis;
+var w = 300;
+var h = 300 ;
+
+var MAX_ITERATION = 10;
+
+var numPoints = 100;
+var dataPoints = [];
+var clusters = [];
+var points;
+var centroids = [];
+var iteration = 0;
+
+init();
+
+
+function kmeans() {
+   centroids = _.chain(dataPoints)
+     .filter(function(p) { return p.isSeed; })
+     .map(function(p) { return { x: p.x, y: p.y}; })
+     .value();
+
+   console.log('init', centroids );
+   centroids = doIteration();
+   centroids = doIteration();
+   centroids = doIteration();
+
+   markCluster()
+
+}
+
+
+
+function markCluster() {
+   var colours = d3.scale.category10();
+   points.style('fill', function(d) {
+      return colours(d.cluster);
+   });
+}
+
+
+function doIteration() {
+
+   // Assign cluster
+   dataPoints.forEach(function(p) {
+      var idx = -1;
+      var dist = 0;
+
+      centroids.forEach(function(centroid, cidx) {
+         var tempDist = _dist(centroid, p);
+         if (idx == -1 || tempDist < dist) {
+            idx = cidx;
+            dist = tempDist;
+         }
+         p.cluster = idx;
+      });
+   });
+
+   // Recalculate centroid
+   var newCentroids = [];
+
+   centroids.forEach(function(centroid, cidx) {
+      var cpoints = _.filter(dataPoints, function(p) { return p.cluster === cidx; });
+      console.log('iteration ', iteration, cidx, cpoints.length);
+
+      var len = cpoints.length;
+      var xSum = _.sum(_.map(cpoints, function(p) { return p.x;}));
+      var ySum = _.sum(_.map(cpoints, function(p) { return p.y;}));
+      xSum /= len;
+      ySum /= len;
+      newCentroids.push({x: xSum, y:ySum});
+   });
+   return newCentroids;
+}
+
+
+function _dist(p1, p2) {
+   return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+}
+
+
+function init() {
+   vis = d3.select('#canvas').attr('viewBox', '0 0 ' + w + ' ' + h)
+     .attr('preserveAspectRatio', 'xMidYMid')
+     .append('g');
+
+   summary = d3.select('#summary').attr('viewBox', '0 0 ' + w + ' ' + h)
+     .attr('preserveAspectRatio', 'xMidYMid')
+     .append('g');
+
+   var padding = 10;
+   for (var i=0; i < numPoints; i++) {
+      dataPoints.push({
+         id: i,
+         x: 10 + Math.random() * (w - 2 * padding),
+         y: 10 + Math.random() * (w - 2 * padding)
+      });
+   }
+
+   vis.append('rect')
+     .attr({ x: 0, y: 0, width: w, height: h })
+     .style({ fill: 'none', stroke: '#bbb' });
+
+   points = vis.selectAll('.point')
+     .data(dataPoints)
+     .enter()
+     .append('circle')
+     .classed('point', true)
+     .attr({
+        cx: function(d) { return d.x; },
+        cy: function(d) { return d.y; },
+        r: 5,
+        isSeed: false
+     })
+     .style({
+        fill: '#BBB',
+        stroke: '#666',
+        cursor: 'pointer'
+     });
+
+  points.on('click', function(d) {
+     d.isSeed = !d.isSeed;
+     d3.select(this).style('stroke-width', d.isSeed? 3 : 1);
+  });
+
+}
+
+
+
+</script>
+</html>
